@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body { font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; color: #1a1a1a; line-height: 1.4; }
+  .wrap { max-width: 860px; margin: 0 auto; }
+  h1 { font-size: 20px; margin-bottom: 2px; }
+  .sub { color: #666; font-size: 13px; margin-bottom: 18px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td { text-align: left; padding: 7px 9px; border-bottom: 1px solid #eee; vertical-align: top; }
+  th { background: #f6f8fa; font-size: 11px; text-transform: uppercase; letter-spacing: .03em; color: #555; }
+  .score { font-weight: 700; font-size: 15px; }
+  .s-hi { color: #0a7d28; }
+  .s-mid { color: #b8860b; }
+  .dom a { color: #0b5fff; text-decoration: none; font-weight: 600; }
+  .metrics { color: #444; font-size: 12px; }
+  .topic { color: #666; font-size: 11px; }
+  .flag { background: #fff3cd; color: #856404; font-size: 11px; padding: 1px 5px; border-radius: 3px; }
+  .clean { color: #0a7d28; font-size: 11px; }
+  .snipe a { display: inline-block; background: #0b5fff; color: #fff !important; text-decoration: none;
+             padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+  .drop { font-size: 12px; color: #333; }
+  .soon { color: #c0392b; font-weight: 600; }
+  .bars { font-size: 10px; color: #888; white-space: nowrap; }
+  .footer { color: #999; font-size: 11px; margin-top: 22px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>{{ subject_prefix }} {{ count }} domains to snipe</h1>
+  <div class="sub">
+    Source: {{ list_slug }} &middot; generated {{ generated_at }} &middot;
+    ranked by composite score (Authority 35 / Cleanliness 25 / History 20 / Latent traffic 20).
+    {% if filtered_total %}Filter matched ~{{ filtered_total }} domains; showing top {{ count }} new ones.{% endif %}
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>#</th><th>Score</th><th>Domain</th><th>Authority</th>
+        <th>Traffic</th><th>History</th><th>Drops</th><th>Snipe</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for c in candidates %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td class="score {{ 's-hi' if c.score >= 80 else 's-mid' }}">{{ c.score }}</td>
+        <td class="dom">
+          <a href="https://web.archive.org/web/*/{{ c.domain }}">{{ c.domain }}</a><br>
+          <span class="topic">{{ c.dominant_topic or '—' }}</span><br>
+          {% if c.wayback_flag %}<span class="flag">⚠ {{ c.wayback_note }}</span>
+          {% elif c.wayback_note %}<span class="clean">✓ {{ c.wayback_note }}</span>{% endif %}
+        </td>
+        <td class="metrics">
+          TF {{ c.trust_flow|int }} / CF {{ c.citation_flow|int }}<br>
+          {{ c.referring_domains|int }} ref domains<br>
+          TR {{ '%.2f'|format(c.trust_ratio) }}
+          {%- if c.wikipedia_links %} &middot; {{ c.wikipedia_links|int }} wiki{% endif %}
+          {%- if c.edu_refdomains or c.gov_refdomains %} &middot; {{ c.edu_refdomains|int }}edu/{{ c.gov_refdomains|int }}gov{% endif %}
+        </td>
+        <td class="metrics">
+          {{ c.organic_keywords|int }} kw<br>
+          {{ c.organic_traffic|int }}/mo
+        </td>
+        <td class="metrics">
+          {{ c.archive_age_years }}y old<br>
+          {{ c.archive_crawl_results|int }} crawls
+        </td>
+        <td class="drop">
+          {% if c.end_date %}{{ c.end_date }}<br>
+            {% if c.days_until_drop is not none %}
+              <span class="{{ 'soon' if c.days_until_drop <= 3 else '' }}">in {{ c.days_until_drop }}d</span>
+            {% endif %}
+          {% else %}—{% endif %}
+        </td>
+        <td class="snipe">
+          {% set bo = c.preferred_backorder(preferred_backorder) %}
+          {% if bo %}<a href="{{ bo[1] }}">{{ bo[0] }}</a>{% else %}—{% endif %}
+        </td>
+      </tr>
+      <tr><td></td><td></td><td colspan="6" class="bars">
+        auth {{ c.score_breakdown.authority }}/35 ·
+        clean {{ c.score_breakdown.cleanliness }}/25 ·
+        hist {{ c.score_breakdown.history }}/20 ·
+        traffic {{ c.score_breakdown.latent_traffic }}/20
+      </td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="footer">
+    Domain Hunter · scores are heuristics from free data (Majestic/SEMrush figures via ED.net,
+    archive history via Wayback). Always eyeball the Wayback history before buying.
+    ⚠ flags = possible spam era found in archived snapshots.
+  </div>
+</div>
+</body>
+</html>

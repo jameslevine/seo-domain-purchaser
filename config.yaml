@@ -1,0 +1,80 @@
+# Domain Hunter configuration. Everything tunable lives here — no need to edit code.
+# The filter values below were validated by hand against expireddomains.net on 2026-06-06.
+
+# --- Source list on expireddomains.net ---
+# slug options: pendingdelete (snipeable, live traffic data), expiredcom / expirednet / expiredorg
+# (already-dropped, registerable now but traffic data decayed). Pending-delete is the default.
+list_slug: pendingdelete
+
+# --- Filter (the gates) ---
+# IMPORTANT gotchas baked in here (see memory/expireddomains-net-mechanics):
+#   - archive_birth_year_max maps to the form field `fabirth_year` (which is the MAX box despite its name)
+#   - the form is POST-only; GET params only pre-fill. The client submits it properly.
+filter:
+  archive_birth_year_max: 2016   # only domains first archived in 2016 or earlier (>= ~9y old)
+  name_length_max: 15            # fmaxhost
+  no_numbers: true               # fnumhost
+  no_hyphens: true               # fsephost
+  no_adult: true                 # fadult
+  trust_flow_min: 10             # fmseotf
+  citation_flow_min: 10          # fmseocf
+  referring_domains_min: 20      # fmseorefdomains
+  organic_keywords_min: 1        # fsruskmin — HARD GATE. Set to 0 to disable (keeps far more candidates).
+  only_available: false          # fwhois — meaningful only on the deleted lists, not pending-delete.
+  max_pages: 6                   # how many result pages (25/page) to scrape. 6 = top ~150 by sort.
+  sort_field: fmseotf            # ED.net single-column sort (the script re-ranks by composite score anyway)
+  sort_desc: true
+
+# --- Composite score weights (must sum to 100) ---
+# Balanced profile for content-site rebuilds.
+scoring:
+  weights:
+    authority: 35      # Trust Flow, referring domains, Wikipedia/.edu/.gov links
+    cleanliness: 25    # TR ratio (CF/TF) + topical-trust-flow coherence
+    history: 20        # archive age + archive crawl-result count
+    latent_traffic: 20 # SEMrush organic keywords + traffic + search volume
+  # Topical Trust Flow categories that indicate spam/manipulated history. If the dominant
+  # TTF topic matches one of these, cleanliness is heavily penalized.
+  spam_topics:
+    - adult
+    - gambling
+    - casino
+    - pharma
+    - World/Chinese   # often spam farms; tune to taste
+
+# --- Wayback Machine spam-history check ---
+wayback:
+  enabled: true
+  max_candidates_checked: 40   # only check the top-N by score (each check hits archive.org)
+  snapshots_sampled: 6         # how many historical snapshots to sample per domain
+  request_timeout: 20
+  # If any sampled snapshot's text matches these, the domain is flagged (not auto-dropped).
+  spam_markers:
+    - viagra
+    - cialis
+    - casino
+    - poker
+    - "918kiss"
+    - judi
+    - bandar
+    - togel
+    - escort
+    - replica watches
+    - payday loan
+
+# --- Output / email ---
+email:
+  top_n: 25                # how many top-scored domains to include in the email
+  subject_prefix: "[Domain Hunter]"
+  # Preferred backorder providers in priority order; the email surfaces the first match per domain.
+  preferred_backorder:
+    - Dynadot.com
+    - Gname.com
+    - Catched.com
+    - Nicsell.com
+
+# --- State / dedupe ---
+state:
+  db_path: state/seen_domains.sqlite3
+  # Don't re-email a domain we've already recommended within this many days.
+  suppress_days: 30
